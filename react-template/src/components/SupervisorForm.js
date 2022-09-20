@@ -1,12 +1,142 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 
 const SupervisorForm = () => {
+    const [formValues, setFormValues] = useState({
+        firstName: '',
+        lastName: '',
+        notifyByEmail: false,
+        notifyByPhone: false,
+        email: '',
+        phoneNumber: '',
+        supervisor: '',
+    })
+    const [supervisors, setSupervisors] = useState([])
+    const [error, setError] = useState('')
+
+    useEffect(async () => {
+        const result = await fetch(
+            'https://o3m5qixdng.execute-api.us-east-1.amazonaws.com/api/managers'
+        )
+            .then((res) => res.json())
+            .catch((error) => {
+                console.error('Error: ', error)
+                return []
+            })
+        if (result?.length) {
+            setSupervisors(result)
+        }
+    }, [])
+
+    const onChange = (e) => {
+        setFormValues((prevState) => ({
+            ...prevState,
+            [e.target.id]: e.target.value,
+        }))
+    }
+
+    const onCheck = (e) =>
+        setFormValues((prevState) => ({
+            ...prevState,
+            [e.target.id]: e.target.checked,
+        }))
+
+    const validateEmail = (mail) => {
+        if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(mail)) {
+            return true
+        }
+        return false
+    }
+
+    const validateName = (name) => Boolean(name && !/\d/.test(name))
+
+    const isNotValidPayload = () => {
+        if (!validateName(formValues.firstName)) {
+            return 'Please enter valid first name'
+        } else if (!validateName(formValues.lastName)) {
+            return 'Please enter valid last name'
+        } else if (!(formValues.notifyByEmail || formValues.notifyByPhone)) {
+            return 'Please select either of one: Email or Phone'
+        } else if (
+            formValues.notifyByEmail &&
+            !validateEmail(formValues.email)
+        ) {
+            return 'You have entered an invalid email address!'
+        } else if (formValues.notifyByPhone && !formValues.phoneNumber) {
+            return 'Please enter valid phone number'
+        } else if (!formValues.supervisor) {
+            return 'Please select any one supervisor'
+        }
+        return false
+    }
+
+    const onSubmit = async () => {
+        const isNotValid = isNotValidPayload()
+        if (isNotValid) {
+            alert(isNotValid)
+            return
+        }
+
+        const payload = {
+            firstName: formValues.firstName,
+            lastName: formValues.lastName,
+            supervisor: supervisors.find(
+                (superVisor) => superVisor.id === formValues.supervisor
+            ),
+        }
+
+        if (formValues.notifyByEmail) {
+            payload['email'] = formValues.email
+        }
+        if (formValues.notifyByPhone) {
+            payload['phoneNumber'] = formValues.phoneNumber
+        }
+
+        const result = await fetch(
+            'http://localhost:8080/api/supervisor/submit',
+            {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                },
+            }
+        )
+            .then((res) => res.json())
+            .catch((error) => error)
+            .finally(() => setError(''))
+
+        if (result?.error) {
+            setError(result?.error?.message || '')
+        }
+    }
+
     return (
         <div className="container w-50">
             <div className="row justify-content-md-center bg-light">
                 <div className="p-3 mb-2 bg-info text-dark text-center">
                     Notification Form
                 </div>
+                {error && (
+                    <div
+                        class="alert alert-danger p-1 d-flex justify-content-between align-items-center"
+                        role="alert"
+                    >
+                        <span>{error}</span>
+                        <span
+                            onClick={() => setError('')}
+                            style={{
+                                cursor: 'pointer',
+                                fontSize: '24px',
+                                margin: '0',
+                                padding: '0',
+                            }}
+                            aria-hidden="true"
+                        >
+                            &times;
+                        </span>
+                    </div>
+                )}
                 <div className="w-100">
                     <form>
                         <div className="row">
@@ -18,6 +148,8 @@ const SupervisorForm = () => {
                                         className="form-control"
                                         id="firstName"
                                         placeholder="Enter First Name"
+                                        value={formValues.firstName}
+                                        onChange={onChange}
                                     />
                                 </div>
                             </div>
@@ -29,6 +161,8 @@ const SupervisorForm = () => {
                                         className="form-control"
                                         id="lastName"
                                         placeholder="Enter Last Name"
+                                        value={formValues.lastName}
+                                        onChange={onChange}
                                     />
                                 </div>
                             </div>
@@ -43,15 +177,21 @@ const SupervisorForm = () => {
                                         <input
                                             class="form-check-input"
                                             type="checkbox"
+                                            id="notifyByEmail"
+                                            value={formValues.notifyByEmail}
+                                            onChange={onCheck}
                                         />
                                         <label for="email">Email</label>
                                     </div>
 
                                     <input
+                                        disabled={!formValues.notifyByEmail}
                                         type="email"
                                         className="form-control"
                                         id="email"
                                         placeholder="Enter email"
+                                        value={formValues.email}
+                                        onChange={onChange}
                                     />
                                 </div>
                             </div>
@@ -61,15 +201,23 @@ const SupervisorForm = () => {
                                         <input
                                             class="form-check-input"
                                             type="checkbox"
+                                            id="notifyByPhone"
+                                            value={formValues.notifyByPhone}
+                                            onChange={onCheck}
                                         />
-                                        <label for="email">Phone Number</label>
+                                        <label for="phoneNumber">
+                                            Phone Number
+                                        </label>
                                     </div>
 
                                     <input
+                                        disabled={!formValues.notifyByPhone}
                                         type="tel"
                                         className="form-control"
                                         id="phoneNumber"
                                         placeholder="Enter Phone Number"
+                                        value={formValues.phoneNumber}
+                                        onChange={onChange}
                                     />
                                 </div>
                             </div>
@@ -79,19 +227,27 @@ const SupervisorForm = () => {
                                 <select
                                     className="form-select w-50"
                                     aria-label="Default select example"
+                                    id="supervisor"
+                                    value={formValues.supervisor}
+                                    onChange={onChange}
                                 >
-                                    <option selected>Select Supervisor</option>
-                                    <option value="1">One</option>
-                                    <option value="2">Two</option>
-                                    <option value="3">Three</option>
+                                    <option value="" selected disabled>
+                                        Select Supervisor
+                                    </option>
+                                    {supervisors.map((supervisor) => (
+                                        <option
+                                            value={supervisor.id}
+                                        >{`${supervisor.jurisdiction} - ${supervisor.lastName}, ${supervisor.firstName}`}</option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
-                        <div className="row mt-4">
+                        <div className="row mt-4 mb-2">
                             <div className="d-flex justify-content-center">
                                 <button
                                     className="btn btn-primary"
-                                    type="submit"
+                                    type="button"
+                                    onClick={onSubmit}
                                 >
                                     Submit
                                 </button>

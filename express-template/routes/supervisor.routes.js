@@ -1,7 +1,8 @@
+const { submitSupervisor } = require('../controllers/supervisor.controller')
+const { submitSupervisorValidator } = require('../middlewares/supervisor')
+
 const supervisorRoutes = require('express').Router()
 
-supervisorRoutes.get('/', (req, res) =>
-    res.status(200).json({ data: 'supervisor' })
-)
+supervisorRoutes.post('/submit', submitSupervisorValidator, submitSupervisor)
 
 module.exports = supervisorRoutes
