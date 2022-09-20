@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 
 const SupervisorForm = () => {
-    const [formValues, setFormValues] = useState({
+    const initialValue = {
         firstName: '',
         lastName: '',
         notifyByEmail: false,
@@ -9,9 +9,31 @@ const SupervisorForm = () => {
         email: '',
         phoneNumber: '',
         supervisor: '',
-    })
+    }
+
+    const [formValues, setFormValues] = useState(initialValue)
     const [supervisors, setSupervisors] = useState([])
     const [error, setError] = useState('')
+    const [success, setSuccess] = useState('')
+
+    const filterResult = (result) => {
+        result = result.filter((item) => isNaN(item.jurisdiction))
+
+        function compare(prev, curr) {
+            if (prev.jurisdiction === curr.jurisdiction) {
+                if (prev.lastName === curr.lastName) {
+                    return prev.firstName.localeCompare(curr.firstName)
+                } else {
+                    return prev.lastName.localeCompare(curr.lastName)
+                }
+            } else {
+                return prev.jurisdiction > curr.jurisdiction ? 1 : -1
+            }
+        }
+
+        result.sort(compare)
+        return result
+    }
 
     useEffect(async () => {
         const result = await fetch(
@@ -23,7 +45,7 @@ const SupervisorForm = () => {
                 return []
             })
         if (result?.length) {
-            setSupervisors(result)
+            setSupervisors(filterResult(result))
         }
     }, [])
 
@@ -54,8 +76,6 @@ const SupervisorForm = () => {
             return 'Please enter valid first name'
         } else if (!validateName(formValues.lastName)) {
             return 'Please enter valid last name'
-        } else if (!(formValues.notifyByEmail || formValues.notifyByPhone)) {
-            return 'Please select either of one: Email or Phone'
         } else if (
             formValues.notifyByEmail &&
             !validateEmail(formValues.email)
@@ -104,10 +124,16 @@ const SupervisorForm = () => {
         )
             .then((res) => res.json())
             .catch((error) => error)
-            .finally(() => setError(''))
+            .finally(() => {
+                setError('')
+                setSuccess('')
+            })
 
         if (result?.error) {
             setError(result?.error?.message || '')
+        } else {
+            setSuccess('Notification Sent!')
+            setFormValues({ ...initialValue })
         }
     }
 
@@ -117,14 +143,19 @@ const SupervisorForm = () => {
                 <div className="p-3 mb-2 bg-info text-dark text-center">
                     Notification Form
                 </div>
-                {error && (
+                {(error || success) && (
                     <div
-                        class="alert alert-danger p-1 d-flex justify-content-between align-items-center"
+                        className={`alert alert-${
+                            error ? 'danger' : success ? 'success' : ''
+                        } p-1 d-flex justify-content-between align-items-center`}
                         role="alert"
                     >
-                        <span>{error}</span>
+                        <span>{error || success}</span>
                         <span
-                            onClick={() => setError('')}
+                            onClick={() => {
+                                setError('')
+                                setSuccess('')
+                            }}
                             style={{
                                 cursor: 'pointer',
                                 fontSize: '24px',
@@ -178,7 +209,7 @@ const SupervisorForm = () => {
                                             class="form-check-input"
                                             type="checkbox"
                                             id="notifyByEmail"
-                                            value={formValues.notifyByEmail}
+                                            checked={formValues.notifyByEmail}
                                             onChange={onCheck}
                                         />
                                         <label for="email">Email</label>
@@ -202,7 +233,7 @@ const SupervisorForm = () => {
                                             class="form-check-input"
                                             type="checkbox"
                                             id="notifyByPhone"
-                                            value={formValues.notifyByPhone}
+                                            checked={formValues.notifyByPhone}
                                             onChange={onCheck}
                                         />
                                         <label for="phoneNumber">
