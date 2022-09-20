@@ -2,22 +2,9 @@ const express = require('express')
 const dotenv = require('dotenv')
 const bodyParser = require('body-parser')
 const cors = require('cors')
-const mongoose = require('mongoose')
 const router = require('./routes/index.routes')
 
 dotenv.config()
-
-// connect with database
-mongoose.connect(
-    process.env.DB_CONNECT,
-    {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        useCreateIndex: true,
-        useFindAndModify: false,
-    },
-    () => console.log('app connected to db!')
-)
 
 const app = new express()
 
